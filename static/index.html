@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentOps — CI/CD Failure Detective</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0d1117; color: #e6edf3; font-family: 'Space Grotesk', sans-serif; min-height: 100vh; }
+header { padding: 20px 40px; border-bottom: 1px solid #21262d; display: flex; align-items: center; gap: 16px; }
+.logo { font-size: 20px; font-weight: 700; color: #fff; }
+.logo span { color: #f78166; }
+.badge { font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 3px 8px; border: 1px solid #30363d; border-radius: 4px; color: #8b949e; }
+main { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+h1 span { color: #f78166; }
+.subtitle { color: #8b949e; margin-bottom: 40px; font-size: 16px; }
+.presets { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+.preset { padding: 8px 16px; border: 1px solid #30363d; border-radius: 6px; background: #161b22; color: #8b949e; cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12px; transition: all .15s; }
+.preset:hover { border-color: #f78166; color: #f78166; }
+.input-row { display: flex; gap: 10px; margin-bottom: 30px; }
+input { flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px 16px; color: #e6edf3; font-family: 'Space Grotesk', sans-serif; font-size: 15px; outline: none; }
+input:focus { border-color: #f78166; }
+button#analyze { padding: 12px 24px; background: #f78166; border: none; border-radius: 8px; color: #0d1117; font-weight: 700; font-size: 14px; cursor: pointer; white-space: nowrap; }
+button#analyze:hover { opacity: .85; }
+button#analyze:disabled { opacity: .4; cursor: not-allowed; }
+.result { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 24px; min-height: 200px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
+.result.loading { color: #8b949e; }
+.step { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #21262d; font-size: 12px; color: #8b949e; }
+.step .icon { color: #3fb950; }
+.steps { margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Agent<span>Ops</span></div>
+  <span class="badge">GitLab CI/CD Detective</span>
+  <span class="badge">Powered by Gemini</span>
+</header>
+<main>
+  <h1>CI/CD <span>Failure</span> Detective</h1>
+  <p class="subtitle">Ask about your GitLab pipeline failures. The agent fetches logs, analyzes them, and suggests fixes.</p>
+  
+  <div class="presets">
+    <button class="preset" onclick="setQuery('Why did my latest pipeline fail and how do I fix it?')">🔍 Latest failure</button>
+    <button class="preset" onclick="setQuery('What tests are failing and why?')">🧪 Test failures</button>
+    <button class="preset" onclick="setQuery('List all recent failed pipelines')">📋 Recent failures</button>
+    <button class="preset" onclick="setQuery('How do I fix the run_tests job failure?')">🔧 Fix suggestion</button>
+  </div>
+
+  <div class="input-row">
+    <input id="query" type="text" placeholder="Ask about your pipeline..." value="Why did my latest pipeline fail and how do I fix it?">
+    <button id="analyze" onclick="analyze()">Analyze →</button>
+  </div>
+
+  <div class="steps" id="steps"></div>
+  <div class="result" id="result">Results will appear here after analysis...</div>
+</main>
+
+<script>
+function setQuery(q) { document.getElementById('query').value = q; }
+
+async function analyze() {
+  const query = document.getElementById('query').value;
+  const btn = document.getElementById('analyze');
+  const result = document.getElementById('result');
+  const steps = document.getElementById('steps');
+  
+  btn.disabled = true;
+  result.className = 'result loading';
+  result.textContent = '⏳ Agent is analyzing your pipelines...';
+  
+  steps.innerHTML = `
+    <div class="step"><span class="icon">✓</span> Fetching failed pipelines from GitLab...</div>
+    <div class="step"><span class="icon">✓</span> Getting job details and logs...</div>
+    <div class="step"><span class="icon">⏳</span> Gemini analyzing root cause...</div>
+  `;
+
+  try {
+    const resp = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({query})
+    });
+    const data = await resp.json();
+    result.className = 'result';
+    result.textContent = data.response;
+    steps.innerHTML = `
+      <div class="step"><span class="icon">✓</span> Pipeline data fetched</div>
+      <div class="step"><span class="icon">✓</span> Logs analyzed by Gemini</div>
+      <div class="step"><span class="icon">✓</span> Fix suggested</div>
+    `;
+  } catch(e) {
+    result.textContent = 'Error: ' + e.message;
+  }
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
